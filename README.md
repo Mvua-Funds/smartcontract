@@ -1,0 +1,1 @@
+# Shift a life near smart contract Rust
