@@ -1,7 +1,9 @@
 use campaign::Campaign;
-use courses::Course;
+use causes::Cause;
 use donations::Donation;
 use events::Event;
+use partners::Partner;
+
 use near_sdk::{
   borsh::{self, BorshDeserialize, BorshSerialize},
   collections::{UnorderedSet, UnorderedMap},
@@ -15,16 +17,17 @@ use near_sdk::{
 pub mod account;
 pub mod campaign;
 pub mod constants;
-pub mod courses;
+pub mod causes;
 pub mod donations;
 pub mod errors;
 pub mod events;
 pub mod fungibletoken;
+pub mod partners;
 
 #[derive(BorshSerialize, BorshDeserialize, Serialize, Deserialize, Debug)]
 #[serde(crate = "near_sdk::serde")]
 pub struct TokenMetadata {
-  pub address: AccountId,
+  pub address: String,
   pub name: String,
   pub symbol: String,
   pub icon: String,
@@ -36,11 +39,12 @@ pub struct TokenMetadata {
 pub struct Contract {
   pub gurdians: UnorderedSet<AccountId>,
   pub running: bool,
-  pub courses: UnorderedSet<Course>, // causes
-  pub events: UnorderedSet<Event>,
-  pub campaigns: UnorderedSet<Campaign>,
+  pub causes: UnorderedSet<Cause>, // causes
+  pub events: UnorderedMap<String, Event>,
+  pub campaigns: UnorderedMap<String, Campaign>,
   pub donations: UnorderedSet<Donation>,
-  pub tokens: UnorderedMap<AccountId, TokenMetadata>,
+  pub tokens: UnorderedMap<String, TokenMetadata>,
+  pub partners: UnorderedMap<String, Partner>,
 }
 
 impl Default for Contract {
@@ -48,11 +52,12 @@ impl Default for Contract {
     Self {
       gurdians: UnorderedSet::new(b"g"),
       running: true,
-      courses: UnorderedSet::new(b"c"),
-      events: UnorderedSet::new(b"e"),
-      campaigns: UnorderedSet::new(b"a"),
+      causes: UnorderedSet::new(b"c"),
+      events: UnorderedMap::new(b"e"),
+      campaigns: UnorderedMap::new(b"a"),
       donations: UnorderedSet::new(b"d"),
       tokens: UnorderedMap::new(b"t".to_vec()),
+      partners: UnorderedMap::new(b"z".to_vec()),
     }
   }
 }
@@ -64,15 +69,21 @@ impl Contract {
     Self {
       gurdians: UnorderedSet::new(b"g"),
       running: true,
-      courses: UnorderedSet::new(b"c"),
-      events: UnorderedSet::new(b"e"),
-      campaigns: UnorderedSet::new(b"a"),
+      causes: UnorderedSet::new(b"c"),
+      events: UnorderedMap::new(b"e"),
+      campaigns: UnorderedMap::new(b"a"),
       donations: UnorderedSet::new(b"d"),
       tokens: UnorderedMap::new(b"t".to_vec()),
+      partners: UnorderedMap::new(b"z".to_vec()),
     }
   }
 
-  pub fn add_token(&mut self, token: AccountId, metadata: TokenMetadata) {
+  pub fn add_token(&mut self, token: String, metadata: TokenMetadata) {
     self.tokens.insert(&token, &metadata);
   }
+
+  pub fn get_tokens(&self) -> Vec<TokenMetadata> {
+    self.tokens.values().collect()
+  }
+  
 }
