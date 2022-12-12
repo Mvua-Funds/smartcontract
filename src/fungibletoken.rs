@@ -23,7 +23,8 @@ trait ContractCallBacks {
     account_id: AccountId,
     token_id: AccountId,
     amount: U128,
-    chat_id: String,
+    target: String, // general, event, campaign
+    id: String,
   ) -> PromiseOrValue<U128>;
 }
 
@@ -43,7 +44,7 @@ impl ContractCallBacks for Contract {
     let target = deposit_details_vec[1].to_string(); // target which can either be general, event or campaign
     let cid = deposit_details_vec[2].to_string(); // Campaign Id
     let eid = deposit_details_vec[3].to_string(); // Event Id
-    let amt_usd = deposit_details_vec[3].to_string(); // Event Id
+    let amt_usd = deposit_details_vec[4].to_string(); // Amount in USD
 
     self.create_donation(
       donation_id,
@@ -64,7 +65,8 @@ impl ContractCallBacks for Contract {
     account_id: AccountId,
     token_id: AccountId,
     amount: U128,
-    chat_id: String,
+    target: String,
+    id: String,
   ) -> PromiseOrValue<U128> {
     assert!(
       env::predecessor_account_id() == env::current_account_id(),

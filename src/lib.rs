@@ -14,6 +14,8 @@ use near_sdk::{
   AccountId, Timestamp,
 };
 
+use std::str::FromStr;
+
 pub mod account;
 pub mod campaign;
 pub mod constants;
@@ -34,12 +36,20 @@ pub struct TokenMetadata {
   pub decimals: u8,
 }
 
+#[derive(Serialize, Deserialize, BorshSerialize, BorshDeserialize, Debug)]
+#[serde(crate = "near_sdk::serde")]
+pub struct Response<T> {
+  pub results: Vec<T>,
+  pub count: u64,
+}
+
+
 #[near_bindgen]
 #[derive(BorshSerialize, BorshDeserialize, Debug)]
 pub struct Contract {
   pub gurdians: UnorderedSet<AccountId>,
   pub running: bool,
-  pub causes: UnorderedSet<Cause>, // causes
+  pub causes: UnorderedSet<Cause>, // causes TRee planting
   pub events: UnorderedMap<String, Event>,
   pub campaigns: UnorderedMap<String, Campaign>,
   pub donations: UnorderedSet<Donation>,
@@ -84,6 +94,10 @@ impl Contract {
 
   pub fn get_tokens(&self) -> Vec<TokenMetadata> {
     self.tokens.values().collect()
+  }
+
+  pub fn get_token(&self, address: String) -> Option<TokenMetadata>{
+    self.tokens.get(&address)
   }
   
 }

@@ -1,6 +1,14 @@
 use crate::*;
 
-#[derive(BorshSerialize, BorshDeserialize, Debug)]
+#[derive(Serialize, Deserialize, BorshSerialize, BorshDeserialize, Debug)]
+#[serde(crate = "near_sdk::serde")]
+pub struct DonationDetails {
+  pub donation: Donation,
+  pub tokenmetadata: Option<TokenMetadata>,
+}
+
+#[derive(Serialize, Deserialize, BorshSerialize, BorshDeserialize, Debug)]
+#[serde(crate = "near_sdk::serde")]
 pub struct Donation {
   pub id: String,
   pub donor: AccountId,
@@ -52,17 +60,38 @@ impl Contract {
     campaign: String,
   ) {
     let mut cid = Some(campaign.clone());
-    if campaign == "null" {
+    if campaign == "null".to_string() {
       cid = None
     }
     let mut eid = Some(event.clone());
-    if event == "null" {
+    if event == "null".to_string() {
       eid = None
     }
-    let donation = Donation::new(id, donor, token, amount, amount_usd, target, eid, cid);
+
+    let donation = Donation::new(
+      id,
+      donor.clone(),
+      token,
+      amount,
+      amount_usd,
+      target.clone(),
+      eid,
+      cid,
+    );
     self.donations.insert(&donation);
+
+    if target.clone() == "event".to_string() {
+      let mut event_itself = self.get_event(event.clone()).unwrap();
+      event_itself.add_voter(donor.clone());
+      self.events.insert(&event.clone(), &event_itself);
+    } else if target == "campaign".to_string() {
+      let mut campaign_itself = self.get_campaign(campaign.clone()).unwrap();
+      campaign_itself.add_voter(donor.clone());
+      self.campaigns.insert(&campaign.clone(), &campaign_itself);
+    }
   }
 
+  #[payable]
   pub fn near_donation(
     &mut self,
     id: String,
@@ -76,8 +105,95 @@ impl Contract {
     // Register donations made in near
     let donor = env::predecessor_account_id();
     self.create_donation(
-      id, donor, token, amount, amount_usd, target, event, campaign,
-    )
+      id,
+      donor.clone(),
+      token,
+      amount,
+      amount_usd,
+      target.clone(),
+      event.clone(),
+      campaign.clone(),
+    );
+    
+    env::attached_deposit();
+  }
+
+  pub fn get_campaign_donations(
+    &self,
+    id: String,
+    page: usize,
+    limit: usize,
+  ) -> Response<DonationDetails> {
+    let start_index = (page - 1) * limit;
+
+    let donations: Vec<Donation> = self
+      .donations
+      .iter()
+      .filter(|don| don.campaign == Some(id.clone()))
+      .skip(start_index)
+      .take(limit)
+      .collect();
+
+    let donations_ = self
+      .donations
+      .iter()
+      .filter(|don| don.campaign == Some(id.clone()))
+      .count();
+
+    let mut results: Vec<DonationDetails> = Vec::new();
+
+    for don in donations {
+      let metadata = self.get_token(don.token.clone());
+      let details = DonationDetails {
+        donation: don,
+        tokenmetadata: metadata,
+      };
+      results.push(details);
+    }
+    let response = Response {
+      results,
+      count: donations_ as u64,
+    };
+    return response;
+  }
+
+  pub fn get_event_donations(
+    &self,
+    id: String,
+    page: usize,
+    limit: usize,
+  ) -> Response<DonationDetails> {
+    let start_index = (page - 1) * limit;
+
+    let donations: Vec<Donation> = self
+      .donations
+      .iter()
+      .filter(|don| don.event == Some(id.clone()))
+      .skip(start_index)
+      .take(limit)
+      .collect();
+
+    let donations_ = self
+      .donations
+      .iter()
+      .filter(|don| don.event == Some(id.clone()))
+      .count();
+
+    let mut results: Vec<DonationDetails> = Vec::new();
+
+    for don in donations {
+      let metadata = self.get_token(don.token.clone());
+      let details = DonationDetails {
+        donation: don,
+        tokenmetadata: metadata,
+      };
+      results.push(details);
+    }
+    let response = Response {
+      results,
+      count: donations_ as u64,
+    };
+    return response;
   }
 
   pub fn token_donation(&mut self) {

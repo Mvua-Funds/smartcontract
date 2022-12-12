@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::{collections::HashMap};
 
 use near_sdk::borsh::{self, BorshDeserialize, BorshSerialize};
 
@@ -12,19 +12,20 @@ pub struct EventType {
 #[derive(Serialize, Deserialize, BorshSerialize, BorshDeserialize, Debug)]
 #[serde(crate = "near_sdk::serde")]
 pub struct Date {
-  pub year: u8,
-  pub month: u8,
-  pub day: u8,
+  pub year: i32,
+  pub month: i32,
+  pub day: i32,
 }
 
-#[derive(BorshSerialize, BorshDeserialize, Debug)]
+#[derive(Serialize, Deserialize, BorshSerialize, BorshDeserialize, Debug)]
+#[serde(crate = "near_sdk::serde")]
 pub struct Event {
   pub id: String,
   pub title: String,
   pub created_by: AccountId,
   pub managers: Vec<AccountId>,
   pub cause: String, // Campaign course ie food security, water, tree planting, etc
-  pub date: Timestamp,
+  pub date: String,
   pub description: String,
   pub target: u128,  // Campaign target amount
   pub token: String, // The targeted token
@@ -34,21 +35,22 @@ pub struct Event {
   pub event_type: String,
   pub channel: Option<String>, //Facebook, twitter spaces, youtube, google meet, etc
   pub channel_url: Option<String>,
-  pub year: u8,
-  pub month: u8,
-  pub day: u8,
+  pub year: i32,
+  pub month: i32,
+  pub day: i32,
   pub created_on: Timestamp,
 
   pub voters: Vec<AccountId>, // Temporary set of people who have donated to this event, on voting, the donor is stripped from this list, can't vote again.
   pub partner: Option<String>, // The winner of the event
   pub partners: HashMap<String, u64>, // Possible companies to effect the event -> ((Kenya redcross, 20), ...) company name and votes.
+  pub img: String,
 }
 
 impl Event {
   pub fn new(
     id: String,
     title: String,
-    date: Timestamp,
+    date: String,
     cause: String,
     description: String,
     target: U128,
@@ -57,9 +59,11 @@ impl Event {
     event_type: String,
     channel: String,
     channel_url: String,
-    dates: Date,
+    dates: String,
+    img: String,
   ) -> Self {
     let created_by = env::predecessor_account_id();
+    let dates_ = dates.split(",").collect::<Vec<&str>>();
     Self {
       id,
       title,
@@ -76,21 +80,26 @@ impl Event {
       channel: Some(channel),
       channel_url: Some(channel_url),
       created_on: env::block_timestamp(),
-      year: dates.year,
-      month: dates.month,
-      day: dates.day,
+      year: <i32 as FromStr>::from_str(dates_[0].trim()).unwrap(),
+      month: <i32 as FromStr>::from_str(dates_[1].trim()).unwrap(),
+      day: <i32 as FromStr>::from_str(dates_[2].trim()).unwrap(),
       voters: Vec::new(),
       partner: None,
       partners: HashMap::new(),
+      img,
     }
   }
 
-  pub fn get_voter(&self, v: AccountId) -> bool {
+  pub fn get_voter(&mut self, v: AccountId) -> bool {
     let exists = self.voters.iter().find(|k| k == &&v);
     if exists.is_some() {
+      self.voters.retain(|x| *x != v.clone());
       return true;
     }
     false
+  }
+  pub fn add_voter(&mut self, v: AccountId){
+    self.voters.push(v);
   }
 }
 
@@ -100,7 +109,7 @@ impl Contract {
     &mut self,
     id: String,
     title: String,
-    date: Timestamp,
+    date: String,
     cause: String,
     description: String,
     target: U128,
@@ -109,7 +118,8 @@ impl Contract {
     event_type: String,
     channel: String,
     channel_url: String,
-    dates: Date,
+    dates: String,
+    img: String,
   ) {
     let event = Event::new(
       id.clone(),
@@ -124,19 +134,20 @@ impl Contract {
       channel,
       channel_url,
       dates,
+      img
     );
     self.events.insert(&id.clone(), &event);
   }
-
+ 
   pub fn get_event(&self, id: String) -> Option<Event> {
     self.events.get(&id)
   }
 
-  pub fn add_event_partner(&mut self, id: String)-> String {
+  pub fn add_event_partner(&mut self, id: String, partner: String)-> String {
     let event = self.get_event(id.clone());
     if event.as_ref().is_some() {
       let mut e = event.unwrap();
-      e.partners.insert(id.clone(), 0);
+      e.partners.insert(partner.clone(), 0);
       self.events.insert(&id.clone(), &e);
       return "done".to_string();
     }
@@ -159,14 +170,30 @@ impl Contract {
     return "not found".to_string();
   }
 
-  pub fn filter_events(&self, year: u8, month: u8) -> Vec<Offer> {
+  pub fn filter_events(&self, year: i32, month: i32) -> Vec<Event> {
     let mut events = Vec::new();
-    self.offers.to_vec().into_iter().for_each(|(_id, offer)| {
-      if offer.offerer == account_id {
-        offers.push(offer)
+    self.events.to_vec().into_iter().for_each(|(_id, event)| {
+      if event.year == year && event.month == month {
+        events.push(event)
       }
     });
-    offers
+    events
+  }
+
+  pub fn get_events(&self, page: usize, limit: usize) -> Response<Event>{
+
+    let start_index = (page - 1) * limit;
+
+    let events: Vec<Event> = self.events.values().into_iter()
+            .skip(start_index)
+            .take(limit)
+            .collect();
+
+    let response = Response{ 
+      results: events, 
+      count: self.events.len(),
+    };
+    return response;
   }
 
 }

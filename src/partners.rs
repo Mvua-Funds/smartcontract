@@ -28,4 +28,13 @@ impl Contract {
   pub fn get_partner(&self, id: String) -> Option<Partner> {
     self.partners.get(&id)
   }
+
+  pub fn get_account_partners(&self, account_id: AccountId) -> Vec<Partner> {
+    self
+      .partners
+      .values()
+      .into_iter()
+      .filter(|partner| partner.created_by == account_id)
+      .collect()
+  }
 }
