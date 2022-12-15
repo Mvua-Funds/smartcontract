@@ -17,6 +17,7 @@ impl Contract{
     pub fn create_cause(&mut self, title: String){
         let cause = Cause{title};
         self.causes.insert(&cause);
+        self.causes_count += 1;
     }
 
     pub fn get_causes(&self)->Vec<Cause>{

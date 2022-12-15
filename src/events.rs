@@ -1,4 +1,4 @@
-use std::{collections::HashMap};
+use std::collections::HashMap;
 
 use near_sdk::borsh::{self, BorshDeserialize, BorshSerialize};
 
@@ -24,11 +24,13 @@ pub struct Event {
   pub title: String,
   pub created_by: AccountId,
   pub managers: Vec<AccountId>,
-  pub cause: String, // Campaign course ie food security, water, tree planting, etc
+  pub cause: String, // Event course ie food security, water, tree planting, etc
   pub date: String,
   pub description: String,
-  pub target: u128,  // Campaign target amount
-  pub token: String, // The targeted token
+  pub target: u128,     // Event target amount
+  pub current: u128,    // Event current amount
+  pub current_usd: f64, // Event current amount in usd
+  pub token: String,    // The targeted token
   // pub attending: u64, // NO of people who have said they are attending
   pub attendees: Vec<AccountId>, // Those attending
   pub venue: Option<String>,     // venue of the event
@@ -73,6 +75,8 @@ impl Event {
       date,
       description,
       target: u128::from(target),
+      current: 0,
+      current_usd: 0.0,
       token,
       attendees: Vec::new(),
       venue: Some(venue),
@@ -98,7 +102,7 @@ impl Event {
     }
     false
   }
-  pub fn add_voter(&mut self, v: AccountId){
+  pub fn add_voter(&mut self, v: AccountId) {
     self.voters.push(v);
   }
 }
@@ -134,16 +138,17 @@ impl Contract {
       channel,
       channel_url,
       dates,
-      img
+      img,
     );
     self.events.insert(&id.clone(), &event);
+    self.events_count += 1;
   }
- 
+
   pub fn get_event(&self, id: String) -> Option<Event> {
     self.events.get(&id)
   }
 
-  pub fn add_event_partner(&mut self, id: String, partner: String)-> String {
+  pub fn add_event_partner(&mut self, id: String, partner: String) -> String {
     let event = self.get_event(id.clone());
     if event.as_ref().is_some() {
       let mut e = event.unwrap();
@@ -180,20 +185,21 @@ impl Contract {
     events
   }
 
-  pub fn get_events(&self, page: usize, limit: usize) -> Response<Event>{
-
+  pub fn get_events(&self, page: usize, limit: usize) -> Response<Event> {
     let start_index = (page - 1) * limit;
 
-    let events: Vec<Event> = self.events.values().into_iter()
-            .skip(start_index)
-            .take(limit)
-            .collect();
+    let events: Vec<Event> = self
+      .events
+      .values()
+      .into_iter()
+      .skip(start_index)
+      .take(limit)
+      .collect();
 
-    let response = Response{ 
-      results: events, 
+    let response = Response {
+      results: events,
       count: self.events.len(),
     };
     return response;
   }
-
 }

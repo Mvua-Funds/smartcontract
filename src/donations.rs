@@ -72,21 +72,26 @@ impl Contract {
       id,
       donor.clone(),
       token,
-      amount,
-      amount_usd,
+      amount.clone(),
+      amount_usd.clone(),
       target.clone(),
       eid,
       cid,
     );
     self.donations.insert(&donation);
-
+    self.total_usd += amount_usd;
+    self.donations_count += 1;
     if target.clone() == "event".to_string() {
       let mut event_itself = self.get_event(event.clone()).unwrap();
       event_itself.add_voter(donor.clone());
+      event_itself.current += u128::from(amount.clone());
+      event_itself.current_usd += amount_usd.clone();
       self.events.insert(&event.clone(), &event_itself);
     } else if target == "campaign".to_string() {
       let mut campaign_itself = self.get_campaign(campaign.clone()).unwrap();
       campaign_itself.add_voter(donor.clone());
+      campaign_itself.current += u128::from(amount.clone());
+      campaign_itself.current_usd += amount_usd;
       self.campaigns.insert(&campaign.clone(), &campaign_itself);
     }
   }

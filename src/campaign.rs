@@ -14,6 +14,8 @@ pub struct Campaign {
   pub end_date: String,
   pub description: String,
   pub target: u128,  // Campaign target amount
+  pub current: u128,  // Campaign current amount
+  pub current_usd: f64,  // Campaign current amount in usd
   pub token: String, // The targeted token
 
   pub voters: Vec<AccountId>, // Temporary set of people who have donated to this campaign, on voting, the donor is stripped from this list, can't vote again.
@@ -59,8 +61,10 @@ impl Campaign {
       cause,
       start_date,
       end_date,
-      description,
+      description, 
       target: u128::from(target),
+      current: 0,
+      current_usd: 0.0,
       token,
       created_on: env::block_timestamp(),
       voters: Vec::new(),
@@ -120,6 +124,7 @@ impl Contract {
       img,
     );
     self.campaigns.insert(&id.clone(), &campaign);
+    self.campaigns_count += 1;
   }
 
   pub fn get_campaign(&self, id: String) -> Option<Campaign> {
